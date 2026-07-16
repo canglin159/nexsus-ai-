@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 import type { TransactionData } from "@shared/types";
-import { Star, X, MessageSquare } from "lucide-react";
+import { Star, X, MessageSquare, Truck, CheckCircle2, Package } from "lucide-react";
 
 const statusSteps = ["pending", "escrow_held", "shipped", "delivered", "completed"];
 
@@ -30,6 +31,7 @@ const statusColors: Record<string, string> = {
 export function BuyerDashboardPage() {
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   // Review modal
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -41,6 +43,10 @@ export function BuyerDashboardPage() {
 
   // Track which transactions already have reviews
   const [reviewedTxIds, setReviewedTxIds] = useState<Set<string>>(new Set());
+
+  // Tracking info state
+  const [trackingInfo, setTrackingInfo] = useState<Record<string, any>>({});
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -63,10 +69,58 @@ export function BuyerDashboardPage() {
     }
   }, []);
 
+  const fetchTrackingInfo = useCallback(async (txId: string) => {
+    try {
+      const data = await apiRequest<any>(`/logistics/tracking/${txId}`);
+      setTrackingInfo((prev) => ({ ...prev, [txId]: data }));
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     fetchTransactions();
     fetchMyReviews();
   }, [fetchTransactions, fetchMyReviews]);
+
+  // Fetch tracking info for shipped transactions
+  useEffect(() => {
+    transactions.forEach((tx) => {
+      if (tx.status === "shipped" || tx.status === "delivered") {
+        fetchTrackingInfo(tx.id);
+      }
+    });
+  }, [transactions, fetchTrackingInfo]);
+
+  const handleMarkShipped = async (txId: string) => {
+    setActionLoading(txId);
+    try {
+      await apiRequest("/logistics/ship", {
+        method: "POST",
+        body: { transactionId: txId },
+      });
+      await fetchTransactions();
+    } catch (err: any) {
+      alert(err.message || "Failed to mark as shipped");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleConfirmDelivery = async (txId: string) => {
+    setActionLoading(txId);
+    try {
+      await apiRequest("/logistics/confirm-delivery", {
+        method: "POST",
+        body: { transactionId: txId },
+      });
+      await fetchTransactions();
+    } catch (err: any) {
+      alert(err.message || "Failed to confirm delivery");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const openReviewModal = (txId: string) => {
     setReviewTxId(txId);
@@ -123,6 +177,12 @@ export function BuyerDashboardPage() {
           {transactions.map((tx) => {
             const isCompleted = tx.status === "completed";
             const hasReviewed = reviewedTxIds.has(tx.id);
+            const isSeller = user?.id === tx.sellerId;
+            const isBuyer = user?.id === tx.buyerId;
+            const txTracking = trackingInfo[tx.id];
+            const isShipped = tx.status === "shipped";
+            const isDelivered = tx.status === "delivered";
+            const isEscrowHeld = tx.status === "escrow_held";
 
             return (
               <div key={tx.id} className="bg-white border border-border rounded-xl p-6">
@@ -131,6 +191,10 @@ export function BuyerDashboardPage() {
                     <p className="font-semibold">{tx.listing?.title || "Listing"}</p>
                     <p className="text-sm text-muted-foreground">
                       ${tx.amount.toLocaleString()} · Commission: ${tx.commission.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isSeller ? "You are the seller" : `Seller: ${tx.seller?.email || "Unknown"}`}
+                      {isBuyer ? "" : ` · Buyer: ${tx.buyer?.email || "Unknown"}`}
                     </p>
                   </div>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[tx.status] || ""}`}>
@@ -168,9 +232,57 @@ export function BuyerDashboardPage() {
                   ))}
                 </div>
 
-                {/* Leave Review button for completed transactions */}
-                {isCompleted && !hasReviewed && (
+                {/* Shipping / Tracking Info */}
+                {txTracking && (
                   <div className="mt-4 pt-4 border-t border-border">
+                    <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Truck className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Shipping Information</span>
+                      </div>
+                      {txTracking.carrier && (
+                        <p className="text-xs text-blue-700">Carrier: {txTracking.carrier}</p>
+                      )}
+                      {txTracking.trackingNumber && (
+                        <p className="text-xs text-blue-700">Tracking #: {txTracking.trackingNumber}</p>
+                      )}
+                      {txTracking.shippedAt && (
+                        <p className="text-xs text-blue-700">
+                          Shipped: {new Date(txTracking.shippedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
+                  {/* Seller: Mark as Shipped */}
+                  {isSeller && isEscrowHeld && (
+                    <button
+                      onClick={() => handleMarkShipped(tx.id)}
+                      disabled={actionLoading === tx.id}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    >
+                      <Package className="w-4 h-4" />
+                      {actionLoading === tx.id ? "Processing..." : "Mark as Shipped"}
+                    </button>
+                  )}
+
+                  {/* Buyer: Confirm Delivery */}
+                  {isBuyer && isShipped && (
+                    <button
+                      onClick={() => handleConfirmDelivery(tx.id)}
+                      disabled={actionLoading === tx.id}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {actionLoading === tx.id ? "Processing..." : "Confirm Delivery"}
+                    </button>
+                  )}
+
+                  {/* Leave Review button for completed transactions */}
+                  {isBuyer && isCompleted && !hasReviewed && (
                     <button
                       onClick={() => openReviewModal(tx.id)}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
@@ -178,17 +290,15 @@ export function BuyerDashboardPage() {
                       <MessageSquare className="w-4 h-4" />
                       Leave a Review
                     </button>
-                  </div>
-                )}
+                  )}
 
-                {isCompleted && hasReviewed && (
-                  <div className="mt-4 pt-4 border-t border-border">
+                  {isBuyer && isCompleted && hasReviewed && (
                     <span className="inline-flex items-center gap-1 text-xs text-green-600">
                       <Star className="w-3.5 h-3.5 fill-green-500" />
                       Reviewed
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}

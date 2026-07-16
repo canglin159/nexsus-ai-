@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useCreateListing } from "../hooks/useListings";
 import { apiRequest } from "../lib/api";
 import type { ListingEnhancementResult } from "@shared/types";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Truck, MapPin } from "lucide-react";
 
 const categories = ["Electronics", "Vehicles", "Collectibles", "Furniture", "Fashion", "Sports", "Art", "Books", "Other"];
 const conditions = ["new", "like_new", "good", "fair", "poor"];
@@ -20,6 +20,11 @@ export function CreateListingPage() {
   const [location, setLocation] = useState("");
   const [imageUrls, setImageUrls] = useState("");
   const [tags, setTags] = useState("");
+
+  // Shipping options
+  const [localPickup, setLocalPickup] = useState(true);
+  const [shippingAvailable, setShippingAvailable] = useState(true);
+  const [shippingCost, setShippingCost] = useState("");
 
   // AI enhancement state
   const [enhancing, setEnhancing] = useState(false);
@@ -84,7 +89,12 @@ export function CreateListingPage() {
         location: location || undefined,
         images: imageUrls ? imageUrls.split("\n").map((s) => s.trim()).filter(Boolean) : [],
         tags: tags ? tags.split(",").map((s) => s.trim()).filter(Boolean) : [],
-      });
+        shippingOptions: {
+          localPickup,
+          shipping: shippingAvailable,
+          shippingCost: shippingCost ? parseFloat(shippingCost) : undefined,
+        },
+      } as any);
       navigate(`/listings/${result.id}`);
     } catch (err) {
       console.error("Failed to create listing:", err);
@@ -256,10 +266,66 @@ export function CreateListingPage() {
               enhancedFields.has("tags") ? "border-purple-300 bg-purple-50/30" : "border-border"
             }`}
             placeholder="iphone, apple, smartphone"
-          />
-        </div>
+            />
+            </div>
 
-        <button
+            {/* Shipping Options */}
+            <div className="border-t border-border pt-4">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Truck className="w-4 h-4" />
+              Shipping & Pickup Options
+            </h3>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPickup}
+                  onChange={(e) => setLocalPickup(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <div>
+                  <span className="text-sm font-medium flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    Local Pickup Available
+                  </span>
+                  {location && (
+                    <p className="text-xs text-muted-foreground mt-0.5">Pickup in {location}</p>
+                  )}
+                </div>
+              </label>
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={shippingAvailable}
+                  onChange={(e) => setShippingAvailable(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <div className="flex-1">
+                  <span className="text-sm font-medium flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5" />
+                    Shipping Available
+                  </span>
+                </div>
+              </label>
+              {shippingAvailable && (
+                <div className="flex items-center gap-3 ml-7">
+                  <label className="text-sm text-muted-foreground">Shipping Cost (USD):</label>
+                  <input
+                    type="number"
+                    value={shippingCost}
+                    onChange={(e) => setShippingCost(e.target.value)}
+                    min={0}
+                    step="0.01"
+                    className="w-28 px-3 py-1.5 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                    placeholder="Free"
+                  />
+                  {!shippingCost && <span className="text-xs text-green-600">Free Shipping</span>}
+                </div>
+              )}
+            </div>
+            </div>
+
+            <button
           type="submit"
           disabled={createListing.isPending}
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-lg hover:bg-primary/90 transition-colors disabled:opacity-50"

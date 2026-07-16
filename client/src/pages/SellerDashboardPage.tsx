@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { apiRequest } from "../lib/api";
 import type { MessageData } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle, Send, Bot, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { MessageCircle, Send, Bot, ChevronDown, ChevronUp, Star, TrendingUp, ShoppingBag, DollarSign, BarChart3 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-800",
@@ -17,7 +17,7 @@ const statusColors: Record<string, string> = {
 export function SellerDashboardPage() {
   const { data: listings, isLoading, error } = useMyListings();
   const deleteListing = useDeleteListing();
-  const [activeTab, setActiveTab] = useState<"listings" | "inquiries">("listings");
+  const [activeTab, setActiveTab] = useState<"listings" | "inquiries" | "analytics">("listings");
   const { user } = useAuth();
 
   // Seller rating
@@ -25,6 +25,23 @@ export function SellerDashboardPage() {
     queryKey: ["seller-rating", user?.id],
     queryFn: () =>
       apiRequest(`/reviews/seller/${user?.id}`),
+    enabled: !!user?.id,
+  });
+
+  // Seller analytics
+  const { data: sellerAnalytics } = useQuery<any>({
+    queryKey: ["seller-analytics", user?.id],
+    queryFn: async () => {
+      const txData = await apiRequest<any[]>("/payments/transactions");
+      const myTx = txData || [];
+      const completed = myTx.filter((t: any) => t.status === "completed");
+      const totalSales = completed.length;
+      const totalRevenue = completed.reduce((sum: number, t: any) => sum + t.amount, 0);
+      const totalCommission = completed.reduce((sum: number, t: any) => sum + (t.commission || 0), 0);
+      const avgDeal = totalSales > 0 ? totalRevenue / totalSales : 0;
+      const activeCount = listings?.filter((l) => l.status === "active").length || 0;
+      return { totalSales, totalRevenue, totalCommission, avgDeal, activeListings: activeCount };
+    },
     enabled: !!user?.id,
   });
 
@@ -148,6 +165,17 @@ export function SellerDashboardPage() {
               {inquiries.length}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+            activeTab === "analytics"
+              ? "bg-white text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          Analytics
         </button>
       </div>
 
@@ -313,6 +341,69 @@ export function SellerDashboardPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Analytics Tab */}
+      {activeTab === "analytics" && (
+        <div>
+          {!sellerAnalytics ? (
+            <div className="text-center py-12 bg-white border border-border rounded-xl">
+              <TrendingUp className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">Loading analytics...</p>
+            </div>
+          ) : (
+            <>
+              {/* Metric Cards */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {[
+                  { label: "Total Revenue", value: `${(sellerAnalytics.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <DollarSign className="w-5 h-5 text-green-600" />, color: "text-green-600" },
+                  { label: "Active Listings", value: sellerAnalytics.activeListings || 0, icon: <ShoppingBag className="w-5 h-5 text-blue-600" />, color: "text-blue-600" },
+                  { label: "Avg Deal Size", value: `${(sellerAnalytics.avgDeal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <BarChart3 className="w-5 h-5 text-purple-600" />, color: "text-purple-600" },
+                  { label: "Commissions Paid", value: `${(sellerAnalytics.totalCommission || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <TrendingUp className="w-5 h-5 text-emerald-600" />, color: "text-emerald-600" },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-white border border-border rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      {stat.icon}
+                      <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    </div>
+                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-white border border-border rounded-xl p-6">
+                <h3 className="text-sm font-semibold mb-4">Sales Summary</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-3xl font-bold text-primary">{sellerAnalytics.totalSales}</p>
+                    <p className="text-sm text-muted-foreground">Completed Sales</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-primary">{sellerRating?.reviewCount || 0}</p>
+                    <p className="text-sm text-muted-foreground">Reviews Received</p>
+                  </div>
+                </div>
+                {sellerRating && (
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-4 h-4 ${
+                            star <= Math.round(sellerRating.averageRating)
+                              ? "text-yellow-400 fill-yellow-400"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm font-medium">{sellerRating.averageRating}</span>
+                    <span className="text-sm text-muted-foreground">/ 5</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

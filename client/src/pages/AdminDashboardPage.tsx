@@ -11,6 +11,8 @@ import {
   CheckCircle,
   XCircle,
   Shield,
+  TrendingUp,
+  Star,
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────
@@ -81,7 +83,7 @@ interface PaginatedResponse<T> {
 }
 
 // ── Tab Definitions ──────────────────────────────────────
-type TabKey = "overview" | "users" | "listings" | "transactions" | "fraud" | "commission";
+type TabKey = "overview" | "users" | "listings" | "transactions" | "fraud" | "commission" | "analytics";
 
 const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "overview", label: "Overview", icon: <BarChart3 className="w-4 h-4" /> },
@@ -90,6 +92,7 @@ const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "transactions", label: "Transactions", icon: <DollarSign className="w-4 h-4" /> },
   { key: "fraud", label: "Fraud Flags", icon: <Shield className="w-4 h-4" /> },
   { key: "commission", label: "Commission", icon: <Settings className="w-4 h-4" /> },
+  { key: "analytics", label: "Analytics", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 
 const statusColors: Record<string, string> = {
@@ -124,6 +127,14 @@ export function AdminDashboardPage() {
   const [fraudTotal, setFraudTotal] = useState(0);
   const [commissionRules, setCommissionRules] = useState<Record<string, number>>({});
   const [commissionForm, setCommissionForm] = useState<Record<string, string>>({});
+
+  // Analytics states
+  const [analyticsOverview, setAnalyticsOverview] = useState<any>(null);
+  const [revenueByCategory, setRevenueByCategory] = useState<any[]>([]);
+  const [trends, setTrends] = useState<any[]>([]);
+  const [topSellers, setTopSellers] = useState<any[]>([]);
+  const [topBuyers, setTopBuyers] = useState<any[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -206,6 +217,55 @@ export function AdminDashboardPage() {
       setCommissionForm(form);
     } catch (err: any) {
       console.error("Commission rules error:", err);
+    }
+  };
+
+  // ── Analytics Loaders ─────────────────────────────────
+  const loadAnalyticsOverview = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const data = await apiRequest<any>("/analytics/overview");
+      setAnalyticsOverview(data);
+    } catch (err) {
+      console.error("Analytics overview error:", err);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  const loadRevenueByCategory = async () => {
+    try {
+      const data = await apiRequest<any[]>("/analytics/revenue-by-category");
+      setRevenueByCategory(data);
+    } catch (err) {
+      console.error("Revenue by category error:", err);
+    }
+  };
+
+  const loadTrends = async () => {
+    try {
+      const data = await apiRequest<any[]>("/analytics/trends");
+      setTrends(data);
+    } catch (err) {
+      console.error("Trends error:", err);
+    }
+  };
+
+  const loadTopSellers = async () => {
+    try {
+      const data = await apiRequest<any[]>("/analytics/top-sellers");
+      setTopSellers(data);
+    } catch (err) {
+      console.error("Top sellers error:", err);
+    }
+  };
+
+  const loadTopBuyers = async () => {
+    try {
+      const data = await apiRequest<any[]>("/analytics/top-buyers");
+      setTopBuyers(data);
+    } catch (err) {
+      console.error("Top buyers error:", err);
     }
   };
 
@@ -305,6 +365,13 @@ export function AdminDashboardPage() {
         break;
       case "commission":
         loadCommissionRules();
+        break;
+      case "analytics":
+        loadAnalyticsOverview();
+        loadRevenueByCategory();
+        loadTrends();
+        loadTopSellers();
+        loadTopBuyers();
         break;
     }
   }, [activeTab]);
@@ -658,6 +725,181 @@ export function AdminDashboardPage() {
               Save Commission Rules
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Analytics Tab ──────────────────────────────── */}
+      {activeTab === "analytics" && (
+        <div>
+          {analyticsLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : !analyticsOverview ? (
+            <div className="text-center py-12 bg-white border border-border rounded-xl">
+              <p className="text-muted-foreground">No analytics data available yet</p>
+            </div>
+          ) : (
+            <>
+              {/* Metric Cards */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                {[
+                  { label: "Total GMV", value: `${(analyticsOverview.totalGMV || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <DollarSign className="w-5 h-5 text-green-600" />, color: "text-green-600" },
+                  { label: "Total Commissions", value: `${(analyticsOverview.totalCommissionsEarned || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <BarChart3 className="w-5 h-5 text-emerald-600" />, color: "text-emerald-600" },
+                  { label: "Active Listings", value: analyticsOverview.activeListings || 0, icon: <ShoppingBag className="w-5 h-5 text-blue-600" />, color: "text-blue-600" },
+                  { label: "Avg Deal Size", value: `${(analyticsOverview.averageDealSize || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <TrendingUp className="w-5 h-5 text-purple-600" />, color: "text-purple-600" },
+                  { label: "Conversion Rate", value: `${(analyticsOverview.conversionRate || 0).toFixed(1)}%`, icon: <Star className="w-5 h-5 text-yellow-600" />, color: "text-yellow-600" },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-white border border-border rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      {stat.icon}
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                    </div>
+                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid lg:grid-cols-2 gap-6 mb-8">
+                {/* Revenue by Category */}
+                <div className="bg-white border border-border rounded-xl p-6">
+                  <h3 className="text-sm font-semibold mb-4">Revenue by Category</h3>
+                  {revenueByCategory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No completed transactions yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {revenueByCategory.map((cat) => {
+                        const maxGmv = Math.max(...revenueByCategory.map((c: any) => c.gmv));
+                        const barWidth = maxGmv > 0 ? (cat.gmv / maxGmv) * 100 : 0;
+                        return (
+                          <div key={cat.category}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="font-medium capitalize">{cat.category}</span>
+                              <span className="text-muted-foreground">${cat.gmv.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2.5">
+                              <div
+                                className="bg-primary rounded-full h-2.5 transition-all duration-500"
+                                style={{ width: `${barWidth}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
+                              <span>{cat.count} transactions</span>
+                              <span>${cat.commissions.toFixed(2)} commissions</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 30-Day Trends */}
+                <div className="bg-white border border-border rounded-xl p-6">
+                  <h3 className="text-sm font-semibold mb-4">30-Day GMV Trend</h3>
+                  {trends.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No transaction data for recent days</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {/* Bar chart */}
+                      <div className="flex items-end gap-0.5 h-40">
+                        {trends.map((day, idx) => {
+                          const maxGmv = Math.max(...trends.map((d: any) => d.gmv));
+                          const height = maxGmv > 0 ? (day.gmv / maxGmv) * 100 : 0;
+                          return (
+                            <div key={idx} className="flex-1 flex flex-col items-center group relative">
+                              <div
+                                className="w-full bg-primary/60 hover:bg-primary rounded-sm transition-colors min-h-[2px]"
+                                style={{ height: `${Math.max(height, 0.5)}%` }}
+                                title={`${day.date}: ${day.gmv.toFixed(2)}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Date labels (show 5 labels) */}
+                      <div className="flex justify-between text-[10px] text-muted-foreground pt-1">
+                        {trends.filter((_, i) => i % Math.max(1, Math.floor(trends.length / 5)) === 0).concat(trends.length > 0 ? [trends[trends.length - 1]] : []).filter((d, i, arr) => i === 0 || d.date !== arr[i-1].date).map((day) => (
+                          <span key={day.date}>{new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Top Sellers & Buyers */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Top Sellers */}
+                <div className="bg-white border border-border rounded-xl p-6">
+                  <h3 className="text-sm font-semibold mb-4">Top Sellers</h3>
+                  {topSellers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No seller data yet</p>
+                  ) : (
+                    <div className="overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-left text-xs text-muted-foreground">
+                            <th className="pb-2 font-medium">Seller</th>
+                            <th className="pb-2 font-medium">GMV</th>
+                            <th className="pb-2 font-medium">Commission</th>
+                            <th className="pb-2 font-medium text-right">Sales</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {topSellers.slice(0, 5).map((seller: any) => (
+                            <tr key={seller.sellerId} className="text-sm">
+                              <td className="py-2.5 pr-2">
+                                <span className="font-medium truncate block max-w-[140px]">
+                                  {seller.sellerDisplayName || seller.sellerEmail.split("@")[0]}
+                                </span>
+                              </td>
+                              <td className="py-2.5 pr-2">${seller.gmv.toLocaleString()}</td>
+                              <td className="py-2.5 pr-2">${seller.commissionPaid.toFixed(2)}</td>
+                              <td className="py-2.5 text-right">{seller.transactionCount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Top Buyers */}
+                <div className="bg-white border border-border rounded-xl p-6">
+                  <h3 className="text-sm font-semibold mb-4">Top Buyers</h3>
+                  {topBuyers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No buyer data yet</p>
+                  ) : (
+                    <div className="overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-left text-xs text-muted-foreground">
+                            <th className="pb-2 font-medium">Buyer</th>
+                            <th className="pb-2 font-medium">Total Spend</th>
+                            <th className="pb-2 font-medium text-right">Purchases</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {topBuyers.slice(0, 5).map((buyer: any) => (
+                            <tr key={buyer.buyerId} className="text-sm">
+                              <td className="py-2.5 pr-2">
+                                <span className="font-medium truncate block max-w-[160px]">
+                                  {buyer.buyerDisplayName || buyer.buyerEmail.split("@")[0]}
+                                </span>
+                              </td>
+                              <td className="py-2.5 pr-2">${buyer.spend.toLocaleString()}</td>
+                              <td className="py-2.5 text-right">{buyer.transactionCount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

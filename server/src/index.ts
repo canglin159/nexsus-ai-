@@ -11,6 +11,9 @@ import aiRoutes from "./routes/ai.js";
 import fraudRoutes from "./routes/fraud.js";
 import reviewsRoutes from "./routes/reviews.js";
 import adminRoutes from "./routes/admin.js";
+import analyticsRoutes from "./routes/analytics.js";
+import supportRoutes from "./routes/support.js";
+import logisticsRoutes from "./routes/logistics.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -33,6 +36,9 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/fraud", fraudRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/logistics", logisticsRoutes);
 
 // ── Health check ────────────────────────────────────────
 app.get("/api/health", (_req, res) => {

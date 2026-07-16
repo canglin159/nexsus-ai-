@@ -3,9 +3,10 @@ import { useListing } from "../hooks/useListings";
 import { useAuth } from "../hooks/useAuth";
 import { apiRequest } from "../lib/api";
 import { ListingCard } from "../components/ListingCard";
+import { SEO } from "../components/SEO";
 import { useState, useEffect } from "react";
 import type { ListingData, NegotiationResult } from "@shared/types";
-import { MessageCircle, Zap, X, Send, Star } from "lucide-react";
+import { MessageCircle, Zap, X, Send, Star, Truck, MapPin } from "lucide-react";
 
 const conditionLabels: Record<string, string> = {
   new: "New",
@@ -152,6 +153,11 @@ export function ListingDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <SEO
+        title={listing.title}
+        description={listing.description?.slice(0, 200) || ""}
+        image={listing.images?.[0]}
+      />
       <div className="grid md:grid-cols-2 gap-10">
         {/* Image */}
         <div className="rounded-xl overflow-hidden bg-muted">
@@ -205,6 +211,25 @@ export function ListingDetailPage() {
             <div className="border-t border-border pt-4 mb-6">
               <p className="text-sm text-muted-foreground mb-1">Sold by</p>
               <p className="font-medium">{listing.seller.displayName || listing.seller.email}</p>
+            </div>
+          )}
+
+          {/* Shipping info */}
+          {(listing.location || true) && (
+            <div className="border-t border-border pt-4 mb-6">
+              <p className="text-sm font-medium mb-2">Shipping & Pickup</p>
+              <div className="space-y-2">
+                {listing.location && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    <span>Local pickup available in {listing.location}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Truck className="w-4 h-4" />
+                  <span>Shipping available — calculated at checkout</span>
+                </div>
+              </div>
             </div>
           )}
 
