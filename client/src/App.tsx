@@ -13,6 +13,8 @@ import { CreateListingPage } from "./pages/CreateListingPage";
 import { SellerDashboardPage } from "./pages/SellerDashboardPage";
 import { BuyerDashboardPage } from "./pages/BuyerDashboardPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { ReferralPage } from "./pages/ReferralPage";
+import { OutreachDashboardPage } from "./pages/OutreachDashboardPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,7 +56,16 @@ export default function App() {
               <Route element={<SellerDashboardPage />} path="/dashboard/seller" />
               <Route element={<BuyerDashboardPage />} path="/dashboard/buyer" />
               <Route element={<AdminDashboardPage />} path="/dashboard/admin" />
+              <Route element={<OutreachDashboardPage />} path="/dashboard/outreach" />
             </Route>
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout><ReferralPage /></Layout>
+                </ProtectedRoute>
+              }
+              path="/referrals"
+            />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

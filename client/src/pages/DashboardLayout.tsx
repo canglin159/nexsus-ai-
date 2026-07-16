@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { Gift, Users } from "lucide-react";
 
 const navItems: Record<string, { label: string; path: string }[]> = {
   seller: [
@@ -43,6 +44,33 @@ export function DashboardLayout() {
                 {item.label}
               </Link>
             ))}
+            {/* Refer a Friend — shown for all roles except admin */}
+            {user.role !== "admin" && (
+              <Link
+                to="/referrals"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === "/referrals"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Gift className="w-4 h-4" />
+                Refer a Friend
+              </Link>
+            )}
+
+            {/* Outreach — shown for all roles */}
+            <Link
+              to="/dashboard/outreach"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === "/dashboard/outreach"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Outreach
+            </Link>
           </nav>
         </aside>
 

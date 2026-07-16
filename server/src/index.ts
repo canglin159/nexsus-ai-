@@ -14,6 +14,9 @@ import adminRoutes from "./routes/admin.js";
 import analyticsRoutes from "./routes/analytics.js";
 import supportRoutes from "./routes/support.js";
 import logisticsRoutes from "./routes/logistics.js";
+import referralsRoutes from "./routes/referrals.js";
+import marketingRoutes from "./routes/marketing.js";
+import prospectsRoutes from "./routes/prospects.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -39,6 +42,9 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/logistics", logisticsRoutes);
+app.use("/api/referrals", referralsRoutes);
+app.use("/api/marketing", marketingRoutes);
+app.use("/api/prospects", prospectsRoutes);
 
 // ── Health check ────────────────────────────────────────
 app.get("/api/health", (_req, res) => {

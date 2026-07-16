@@ -144,6 +144,49 @@ export const reviews = sqliteTable("reviews", {
     .default(sql`(datetime('now'))`),
 });
 
+// ── Referrals ──────────────────────────────────────────
+export const referrals = sqliteTable("referrals", {
+  id: text("id").primaryKey(),
+  referralCode: text("referral_code").notNull().unique(),
+  referrerId: text("referrer_id")
+    .notNull()
+    .references(() => users.id),
+  refereeId: text("referee_id")
+    .references(() => users.id),
+  status: text("status", { enum: ["pending", "converted", "rewarded"] })
+    .notNull()
+    .default("pending"),
+  rewardAmount: real("reward_amount").default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// ── Marketing Contacts ─────────────────────────────────
+export const marketingContacts = sqliteTable("marketing_contacts", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  subscribed: integer("subscribed", { mode: "boolean" }).default(true),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// ── Support Inquiries ──────────────────────────────────
+export const supportInquiries = sqliteTable("support_inquiries", {
+  id: text("id").primaryKey(),
+  name: text("name"),
+  email: text("email").notNull(),
+  message: text("message").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 // ── Fraud Flags ────────────────────────────────────────
 export const fraudFlags = sqliteTable("fraud_flags", {
   id: text("id").primaryKey(),
@@ -154,6 +197,51 @@ export const fraudFlags = sqliteTable("fraud_flags", {
   riskScore: real("risk_score").notNull(),
   reason: text("reason"),
   resolved: integer("resolved", { mode: "boolean" }).default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// ── Prospects (Outreach CRM) ──────────────────────────
+export const prospects = sqliteTable("prospects", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  platform: text("platform", {
+    enum: ["reddit", "facebook", "discord", "craigslist", "other"],
+  }).notNull(),
+  contactIdentifier: text("contact_identifier").notNull(),
+  notes: text("notes"),
+  status: text("status", {
+    enum: ["new", "contacted", "responded", "interested", "not_interested", "converted"],
+  }).notNull().default("new"),
+  assignedTo: text("assigned_to").references(() => users.id),
+  lastContactedAt: text("last_contacted_at"),
+  nextFollowUpAt: text("next_follow_up_at"),
+  source: text("source"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// ── Outreach Messages ────────────────────────────────
+export const outreachMessages = sqliteTable("outreach_messages", {
+  id: text("id").primaryKey(),
+  prospectId: text("prospect_id")
+    .notNull()
+    .references(() => prospects.id),
+  content: text("content").notNull(),
+  platform: text("platform", {
+    enum: ["reddit", "facebook", "discord", "craigslist", "other"],
+  }).notNull(),
+  sentAt: text("sent_at"),
+  responseReceived: integer("response_received", { mode: "boolean" }).default(false),
+  responseContent: text("response_content"),
+  status: text("status", {
+    enum: ["pending", "sent", "failed"],
+  }).notNull().default("pending"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
