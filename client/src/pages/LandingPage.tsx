@@ -1,6 +1,25 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { ListingCard } from "../components/ListingCard";
+import { useState, useEffect } from "react";
+import { apiRequest } from "../lib/api";
+import type { ListingData } from "@shared/types";
 
 export function LandingPage() {
+  const { user } = useAuth();
+  const [recommendations, setRecommendations] = useState<ListingData[]>([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setLoadingRecs(true);
+      apiRequest<ListingData[]>("/ai/recommendations?limit=8")
+        .then(setRecommendations)
+        .catch(() => {})
+        .finally(() => setLoadingRecs(false));
+    }
+  }, [user]);
+
   return (
     <div>
       {/* Hero */}
@@ -52,6 +71,54 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Recommended For You (logged-in users only) */}
+      {user && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold">Recommended For You</h2>
+                <p className="text-muted-foreground text-sm mt-1">
+                  AI-curated picks based on your preferences
+                </p>
+              </div>
+              <Link
+                to="/listings"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                View All →
+              </Link>
+            </div>
+
+            {loadingRecs ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-border bg-muted animate-pulse h-72" />
+                ))}
+              </div>
+            ) : recommendations.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {recommendations.slice(0, 8).map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-muted/50 rounded-xl">
+                <p className="text-muted-foreground">
+                  No recommendations yet. Start browsing to get personalized picks!
+                </p>
+                <Link
+                  to="/listings"
+                  className="inline-block mt-3 text-primary font-medium hover:underline"
+                >
+                  Browse Listings
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section className="py-20">

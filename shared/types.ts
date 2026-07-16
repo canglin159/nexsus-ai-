@@ -74,3 +74,46 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   limit: number;
   totalPages: number;
 }
+
+// ── AI & Matching Types ─────────────────────────────────
+
+export interface ListingEnhancementInput {
+  title?: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
+}
+
+export interface ListingEnhancementResult {
+  title: string;
+  description: string;
+  tags: string[];
+}
+
+export interface NegotiationResult {
+  suggestedPrice: number;
+  message: string;
+  originalPrice: number;
+  buyerOffer: number;
+  isAccepted: boolean;
+}
+
+export interface MessageData {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  listingId?: string | null;
+  content: string;
+  aiGenerated: boolean;
+  createdAt: string;
+  sender?: {
+    id: string;
+    email: string;
+    displayName?: string | null;
+  };
+  listing?: {
+    id: string;
+    title: string;
+    price: number;
+  } | null;
+}
