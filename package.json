@@ -9,7 +9,8 @@
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:push": "drizzle-kit push --config drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config drizzle.config.ts",
-    "publish": "bash ./publish.sh"
+    "publish": "bash ./publish.sh",
+    "seed": "bun run scripts/seed-listings.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.0",

@@ -53,15 +53,15 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats — live counts fetched from the platform */}
       <section className="border-y border-border bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { label: "Active Listings", value: "1,000+" },
-              { label: "Transactions", value: "500+" },
-              { label: "Happy Users", value: "2,500+" },
-              { label: "Avg. Deal Time", value: "24hrs" },
+              { label: "Commission Rate", value: "8%" },
+              { label: "Listing Fee", value: "Free" },
+              { label: "AI Enhancement", value: "Auto" },
+              { label: "Escrow Protection", value: "100%" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-3xl font-bold text-primary mb-1">{stat.value}</div>
