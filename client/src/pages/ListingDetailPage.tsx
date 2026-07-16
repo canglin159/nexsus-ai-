@@ -5,7 +5,7 @@ import { apiRequest } from "../lib/api";
 import { ListingCard } from "../components/ListingCard";
 import { useState, useEffect } from "react";
 import type { ListingData, NegotiationResult } from "@shared/types";
-import { MessageCircle, Zap, X, Send } from "lucide-react";
+import { MessageCircle, Zap, X, Send, Star } from "lucide-react";
 
 const conditionLabels: Record<string, string> = {
   new: "New",
@@ -26,6 +26,11 @@ export function ListingDetailPage() {
   // Similar listings
   const [similarListings, setSimilarListings] = useState<ListingData[]>([]);
 
+  // Reviews for this listing's seller
+  const [sellerReviews, setSellerReviews] = useState<any[]>([]);
+  const [sellerAvgRating, setSellerAvgRating] = useState(0);
+  const [sellerReviewCount, setSellerReviewCount] = useState(0);
+
   // Ask a Question modal
   const [askModalOpen, setAskModalOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -45,6 +50,19 @@ export function ListingDetailPage() {
         .catch(() => {});
     }
   }, [id]);
+
+  // Fetch seller reviews when listing loads
+  useEffect(() => {
+    if (listing?.sellerId) {
+      apiRequest<{ data: any[]; averageRating: number; reviewCount: number }>(`/reviews/seller/${listing.sellerId}`)
+        .then((res) => {
+          setSellerReviews(res.data || []);
+          setSellerAvgRating(res.averageRating || 0);
+          setSellerReviewCount(res.reviewCount || 0);
+        })
+        .catch(() => {});
+    }
+  }, [listing?.sellerId]);
 
   const handleBuy = async () => {
     if (!user) {
@@ -236,6 +254,58 @@ export function ListingDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Seller Reviews */}
+      {listing.seller && (
+        <section className="mt-16">
+          <h2 className="text-2xl font-bold mb-2">Seller Reviews</h2>
+          {sellerReviewCount > 0 ? (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-5 h-5 ${
+                        star <= Math.round(sellerAvgRating)
+                          ? "text-yellow-400 fill-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-lg font-semibold">{sellerAvgRating}</span>
+                <span className="text-sm text-muted-foreground">({sellerReviewCount} reviews)</span>
+              </div>
+              <div className="space-y-4">
+                {sellerReviews.slice(0, 5).map((review: any) => (
+                  <div key={review.id} className="bg-white border border-border rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-3.5 h-3.5 ${
+                              star <= review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {review.reviewer?.displayName || "Anonymous"} ·{" "}
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {review.content && <p className="text-sm text-muted-foreground">{review.content}</p>}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No reviews yet for this seller.</p>
+          )}
+        </section>
+      )}
 
       {/* Similar Listings */}
       {similarListings.length > 0 && (

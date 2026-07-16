@@ -3,6 +3,7 @@ import { db, schema } from "../db/index.js";
 import { authenticate, authorize, optionalAuth } from "../middleware/auth.js";
 import { generateId, slugify } from "../lib/utils.js";
 import { eq, and, like, gte, lte, desc, asc, or, sql } from "drizzle-orm";
+import { runListingChecks } from "../services/fraudDetection.js";
 
 const router = Router();
 
@@ -160,7 +161,7 @@ router.get("/:id", optionalAuth, (req: Request, res: Response) => {
 });
 
 // ── POST / (authenticated seller) ───────────────────────
-router.post("/", authenticate, authorize("seller"), (req: Request, res: Response) => {
+router.post("/", authenticate, authorize("seller"), async (req: Request, res: Response) => {
   try {
     const { title, description, category, condition, price, currency, location, images, tags } = req.body;
 
@@ -192,6 +193,11 @@ router.post("/", authenticate, authorize("seller"), (req: Request, res: Response
       .run();
 
     const listing = db.select().from(schema.listings).where(eq(schema.listings.id, id)).get()!;
+
+    // Run fraud check asynchronously (fire-and-forget)
+    runListingChecks(id).catch((err) => {
+      console.error("Listing fraud check error:", err);
+    });
 
     res.status(201).json({
       success: true,

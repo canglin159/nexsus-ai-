@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMyListings, useDeleteListing } from "../hooks/useListings";
+import { useAuth } from "../hooks/useAuth";
 import { apiRequest } from "../lib/api";
 import type { MessageData } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle, Send, Bot, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageCircle, Send, Bot, ChevronDown, ChevronUp, Star } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-800",
@@ -17,6 +18,15 @@ export function SellerDashboardPage() {
   const { data: listings, isLoading, error } = useMyListings();
   const deleteListing = useDeleteListing();
   const [activeTab, setActiveTab] = useState<"listings" | "inquiries">("listings");
+  const { user } = useAuth();
+
+  // Seller rating
+  const { data: sellerRating } = useQuery<{ averageRating: number; reviewCount: number }>({
+    queryKey: ["seller-rating", user?.id],
+    queryFn: () =>
+      apiRequest(`/reviews/seller/${user?.id}`),
+    enabled: !!user?.id,
+  });
 
   // Inquiries
   const { data: inquiries, isLoading: inquiriesLoading } = useQuery<MessageData[]>({
@@ -82,6 +92,34 @@ export function SellerDashboardPage() {
           + New Listing
         </Link>
       </div>
+
+      {/* Rating Card */}
+      {sellerRating && (
+        <div className="bg-white border border-border rounded-xl p-4 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`w-5 h-5 ${
+                    star <= Math.round(sellerRating.averageRating)
+                      ? "text-yellow-400 fill-yellow-400"
+                      : "text-gray-300"
+                  }`}
+                />
+              ))}
+            </div>
+            <div>
+              <p className="text-lg font-semibold">
+                {sellerRating.averageRating} / 5
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {sellerRating.reviewCount} review{sellerRating.reviewCount !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted rounded-xl p-1 w-fit">

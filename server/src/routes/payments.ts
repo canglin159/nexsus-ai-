@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { db, schema } from "../db/index.js";
 import { authenticate, authorize } from "../middleware/auth.js";
 import { generateId, calculateCommission } from "../lib/utils.js";
+import { getCommissionRate } from "../services/commission.js";
+import { runTransactionChecks } from "../services/fraudDetection.js";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
@@ -86,7 +88,7 @@ router.post("/create-intent", authenticate, authorize("buyer"), async (req: Requ
       return;
     }
 
-    const commissionRate = parseFloat(process.env.DEFAULT_COMMISSION_RATE || "8");
+    const commissionRate = getCommissionRate(listing.category);
     const amount = listing.price;
     const commission = calculateCommission(amount, commissionRate);
     const now = new Date().toISOString();
@@ -126,6 +128,11 @@ router.post("/create-intent", authenticate, authorize("buyer"), async (req: Requ
         updatedAt: now,
       })
       .run();
+
+    // Run transaction fraud check asynchronously
+    runTransactionChecks(transactionId).catch((err) => {
+      console.error("Transaction fraud check error:", err);
+    });
 
     res.status(201).json({
       success: true,

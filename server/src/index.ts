@@ -8,6 +8,9 @@ import authRoutes from "./routes/auth.js";
 import listingsRoutes from "./routes/listings.js";
 import paymentsRoutes from "./routes/payments.js";
 import aiRoutes from "./routes/ai.js";
+import fraudRoutes from "./routes/fraud.js";
+import reviewsRoutes from "./routes/reviews.js";
+import adminRoutes from "./routes/admin.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -27,6 +30,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingsRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/fraud", fraudRoutes);
+app.use("/api/reviews", reviewsRoutes);
+app.use("/api/admin", adminRoutes);
 
 // ── Health check ────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
